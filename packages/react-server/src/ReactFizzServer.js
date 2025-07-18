@@ -2772,6 +2772,11 @@ function renderLazyComponent(
   props: Object,
   ref: any,
 ): void {
+  // Clear the thenable state before rendering the lazy component.
+  // Lazy components should start with a fresh thenable state,
+  // not inherit from their parent.
+  task.thenableState = null;
+
   let Component;
   if (__DEV__) {
     Component = callLazyInitInDEV(lazyComponent);

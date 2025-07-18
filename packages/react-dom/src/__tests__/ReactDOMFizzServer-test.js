@@ -896,6 +896,53 @@ describe('ReactDOMFizzServer', () => {
     expect(getVisibleChildren(container)).toEqual(<div>Hello</div>);
   });
 
+  it('should not reuse parent thenable state in lazy components', async () => {
+    const promise1 = Promise.resolve('value1');
+    const promise2 = Promise.resolve('value2');
+    
+    function Component1() {
+      const data = use(promise1);
+      return (
+        <div>
+          Component1: {data}
+          <React.Suspense fallback="Loading Component2...">
+            <Component2Lazy />
+          </React.Suspense>
+        </div>
+      );
+    }
+
+    function Component2() {
+      const data = use(promise2);
+      return <div>Component2: {data}</div>;
+    }
+
+    const Component2Lazy = React.lazy(async () => ({ default: Component2 }));
+
+    function App() {
+      return (
+        <div>
+          <React.Suspense fallback="Loading Component1...">
+            <Component1 />
+          </React.Suspense>
+        </div>
+      );
+    }
+
+    await act(() => {
+      const {pipe} = renderToPipeableStream(<App />);
+      pipe(writable);
+    });
+
+    const textContent = container.textContent;
+
+    expect(textContent).toContain('Component1: value1');
+
+    expect(textContent).toContain('Component2: value2');
+
+    expect(textContent).not.toContain('Component2: value1');
+  });
+
   it('should client render a boundary if a lazy element rejects', async () => {
     let rejectElement;
     const element = <Text text="Hello" />;
